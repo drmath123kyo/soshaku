@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#fff8e7" />
+  <meta name="description" content="WEB謎「咀嚼」" />
+  <title>咀嚼｜WEB謎</title>
+  <style>
+    :root {
+      --bg: #fff8e7;
+      --ink: #241c17;
+      --accent: #c78d2d;
+      --panel: rgba(255,255,255,.7);
+      --shadow: 0 12px 30px rgba(45, 32, 20, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", YuGothic, Meiryo, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+
+    button, a { -webkit-tap-highlight-color: transparent; }
+
+    .game {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+      background:
+        radial-gradient(circle at 50% 8%, rgba(255,255,255,.9), transparent 38%),
+        var(--bg);
+    }
+
+    .title {
+      margin: 0;
+      text-align: center;
+      font-size: clamp(13px, 3vw, 17px);
+      letter-spacing: .18em;
+      font-weight: 700;
+      opacity: .75;
+    }
+
+    .stage {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: clamp(28px, 8vh, 72px);
+    }
+
+    .curry {
+      width: min(42vw, 230px);
+      height: min(42vw, 230px);
+      min-width: 150px;
+      min-height: 150px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: clamp(84px, 24vw, 150px);
+      background: linear-gradient(145deg, #fffdf7, #f5ead1);
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.9);
+      user-select: none;
+      position: relative;
+    }
+
+    .curry::after {
+      content: "";
+      position: absolute;
+      inset: -7px;
+      border-radius: 50%;
+      border: 2px dashed rgba(199, 141, 45, .25);
+      pointer-events: none;
+    }
+
+    .prompt {
+      margin: 24px 0 0;
+      text-align: center;
+      font-size: clamp(19px, 5.4vw, 30px);
+      line-height: 1.55;
+      font-weight: 800;
+      letter-spacing: .04em;
+      max-width: 32rem;
+      text-wrap: balance;
+    }
+
+    .tray {
+      width: 100%;
+      max-width: 760px;
+      min-height: 132px;
+      padding: 15px 10px calc(12px + env(safe-area-inset-bottom));
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: inset 0 0 0 1px rgba(90, 60, 30, .06);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(7px, 2vw, 14px);
+      backdrop-filter: blur(8px);
+    }
+
+    .tray::before {
+      content: "ドラッグして動かす";
+      width: 100%;
+      text-align: center;
+      margin-bottom: -1px;
+      color: rgba(36,28,23,.52);
+      font-size: 12px;
+      letter-spacing: .12em;
+      pointer-events: none;
+    }
+
+    .item {
+      width: clamp(54px, 14vw, 74px);
+      height: clamp(54px, 14vw, 74px);
+      border: 0;
+      border-radius: 18px;
+      background: rgba(255,255,255,.82);
+      box-shadow: 0 7px 18px rgba(50,30,10,.09), inset 0 0 0 1px rgba(80,50,30,.06);
+      display: grid;
+      place-items: center;
+      font-size: clamp(28px, 8vw, 42px);
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      position: relative;
+      transition: transform .16s ease, box-shadow .16s ease;
+    }
+
+    .item:active {
+      cursor: grabbing;
+      transform: scale(.96);
+    }
+
+    .item.dragging {
+      position: fixed;
+      z-index: 40;
+      transform: translate(-50%, -50%) scale(1.12);
+      box-shadow: 0 18px 32px rgba(30,20,10,.22);
+      pointer-events: none;
+      transition: none;
+    }
+
+    .drag-ghost {
+      position: fixed;
+      z-index: 39;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .blackout {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: #000;
+      display: grid;
+      place-items: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .7s ease, visibility 0s linear .7s;
+    }
+
+    .blackout.show {
+      opacity: 1;
+      visibility: visible;
+      transition: opacity .7s ease;
+    }
+
+    .riddle-morph {
+      color: #fff;
+      text-align: center;
+      font-weight: 900;
+      letter-spacing: .06em;
+      font-size: clamp(42px, 14vw, 96px);
+      line-height: 1;
+      padding: 20px;
+      transform: translateY(12px);
+      opacity: 0;
+      transition: opacity 1s ease, transform 1s ease;
+      min-height: 2.45em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .blackout.show .riddle-morph.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .morph-stack {
+      position: relative;
+      width: 4.8em;
+      height: 2.1em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .12em;
+    }
+
+    .morph-water, .morph-curry, .morph-final {
+      display: block;
+      white-space: nowrap;
+    }
+
+    .morph-water {
+      transform: translateY(0);
+      opacity: 1;
+      transition: transform 3.6s cubic-bezier(.22,.8,.2,1), opacity 2.4s ease;
+      font-size: .62em;
+      letter-spacing: .08em;
+    }
+
+    .morph-curry {
+      transition: transform 3.6s cubic-bezier(.22,.8,.2,1), letter-spacing 3.6s ease;
+    }
+
+    .morph-stack.merge .morph-water {
+      transform: translate(0, 1.12em);
+    }
+
+    .morph-stack.merge .morph-curry {
+      transform: translate(0, -.47em);
+      letter-spacing: 0;
+    }
+
+    .morph-final {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      transform: translate(-50%, -50%) scale(.94);
+      opacity: 0;
+      transition: opacity 2.4s ease, transform 2.4s ease;
+    }
+
+    .morph-stack.final .morph-water,
+    .morph-stack.final .morph-curry {
+      opacity: 0;
+    }
+
+    .morph-stack.final .morph-final {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .clear-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 110;
+      display: grid;
+      place-items: center;
+      background: #000;
+      color: #fff;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .7s ease, visibility 0s linear .7s;
+      padding: 28px;
+    }
+
+    .clear-screen.show {
+      opacity: 1;
+      visibility: visible;
+      transition: opacity .7s ease;
+    }
+
+    .clear-content {
+      text-align: center;
+      transform: translateY(12px);
+      transition: transform .7s ease;
+    }
+
+    .clear-screen.show .clear-content {
+      transform: translateY(0);
+    }
+
+    .clear-text {
+      margin: 0;
+      font-size: clamp(19px, 4.7vw, 31px);
+      line-height: 1.9;
+      font-weight: 900;
+      letter-spacing: .03em;
+      text-wrap: balance;
+    }
+
+    .share {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 76px;
+      height: 76px;
+      margin-top: 34px;
+      border-radius: 50%;
+      background: #fff;
+      color: #000;
+      text-decoration: none;
+      box-shadow: 0 14px 34px rgba(255,255,255,.13);
+      transition: transform .16s ease;
+    }
+
+    .share:hover { transform: translateY(-3px); }
+    .share:active { transform: scale(.95); }
+
+    .x-mark {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    @media (min-width: 760px) {
+      .game { padding-left: 32px; padding-right: 32px; }
+      .stage { padding-top: 52px; }
+      .tray { min-height: 150px; padding-bottom: 18px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game" aria-label="WEB謎 咀嚼">
+    <h1 class="title">WEB謎「咀嚼」</h1>
+
+    <section class="stage">
+      <div class="curry" id="curry" aria-label="カレー">🍛</div>
+      <p class="prompt">このカレーの咀嚼の難易度を上げろ！</p>
+    </section>
+
+    <section class="tray" aria-label="動かせるもの">
+      <button class="item" data-kind="milk" aria-label="牛乳">🥛</button>
+      <button class="item" data-kind="juice" aria-label="ジュース">🧃</button>
+      <button class="item" data-kind="tea" aria-label="お茶">🍵</button>
+      <button class="item" data-kind="water" aria-label="水">💧</button>
+      <button class="item" data-kind="coffee" aria-label="コーヒー">☕</button>
+      <button class="item" data-kind="ramen" aria-label="ラーメン">🍜</button>
+      <button class="item" data-kind="honey" aria-label="はちみつ">🍯</button>
+    </section>
+  </main>
+
+  <div class="blackout" id="blackout" aria-hidden="true">
+    <div class="riddle-morph" id="morphText" aria-live="polite"></div>
+  </div>
+
+  <section class="clear-screen" id="clearScreen" aria-hidden="true">
+    <div class="clear-content">
+      <p class="clear-text">水が大量にぶち込まれたカレーを手に入れた。<br>このカレーに対するオノマトペをつけて感想ツイートをしましょう。</p>
+      <a
+        class="share"
+        href="https://twitter.com/intent/tweet?text=WEB%E8%AC%8E%E3%80%8C%E5%92%80%E5%9A%BC%E3%80%8D%E3%82%92%E8%A7%A3%E3%81%84%E3%81%9F%EF%BC%81%0A%0A%23%E5%92%80%E5%9A%BC%E8%AC%8E%0A%0A%5B%E3%81%93%E3%81%93%E3%81%AB%E5%87%BA%E6%9D%A5%E4%B8%8A%E3%81%8C%E3%81%A3%E3%81%9F%E6%96%99%E7%90%86%E3%81%AB%E5%AF%BE%E3%81%99%E3%82%8B%E6%84%9F%E6%83%B3%E3%82%92%E3%82%AA%E3%83%8E%E3%83%9E%E3%83%88%E3%83%9A%E3%82%92%E4%BD%BF%E3%81%A3%E3%81%A6%E3%81%A9%E3%81%86%E3%81%9E%5D&openExternalBrowser=1"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Xでクリアを投稿"
+      ><span class="x-mark" aria-hidden="true">𝕏</span></a>
+    </div>
+  </section>
+
+  <script>
+    const curry = document.getElementById('curry');
+    const blackout = document.getElementById('blackout');
+    const morphText = document.getElementById('morphText');
+    const clearScreen = document.getElementById('clearScreen');
+    const items = [...document.querySelectorAll('.item')];
+
+    let solved = false;
+    let active = null;
+
+    function rectsOverlap(a, b) {
+      return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    }
+
+    function isOverCurry(el) {
+      const itemRect = el.getBoundingClientRect();
+      const curryRect = curry.getBoundingClientRect();
+      const itemCenter = {
+        x: itemRect.left + itemRect.width / 2,
+        y: itemRect.top + itemRect.height / 2,
+      };
+      const cx = curryRect.left + curryRect.width / 2;
+      const cy = curryRect.top + curryRect.height / 2;
+      const r = curryRect.width * .42;
+      const d = Math.hypot(itemCenter.x - cx, itemCenter.y - cy);
+      return rectsOverlap(itemRect, curryRect) || d < r;
+    }
+
+    function moveGhost(ev) {
+      if (!active) return;
+      active.el.style.left = ev.clientX + 'px';
+      active.el.style.top = ev.clientY + 'px';
+    }
+
+    function startDrag(ev, item) {
+      if (solved || active) return;
+      ev.preventDefault();
+      const rect = item.getBoundingClientRect();
+      const ghost = item.cloneNode(true);
+      ghost.className = 'item dragging';
+      ghost.style.width = rect.width + 'px';
+      ghost.style.height = rect.height + 'px';
+      ghost.style.left = ev.clientX + 'px';
+      ghost.style.top = ev.clientY + 'px';
+      document.body.appendChild(ghost);
+
+      active = { item, el: ghost, pointerId: ev.pointerId };
+      item.style.visibility = 'hidden';
+      item.setPointerCapture?.(ev.pointerId);
+
+      window.addEventListener('pointermove', onPointerMove, { passive: false });
+      window.addEventListener('pointerup', onPointerUp, { once: true });
+      window.addEventListener('pointercancel', onPointerUp, { once: true });
+    }
+
+    function onPointerMove(ev) {
+      if (!active || ev.pointerId !== active.pointerId) return;
+      ev.preventDefault();
+      moveGhost(ev);
+    }
+
+    function onPointerUp(ev) {
+      if (!active || ev.pointerId !== active.pointerId) return;
+      ev.preventDefault();
+      moveGhost(ev);
+      const wasWater = active.item.dataset.kind === 'water';
+      const success = wasWater && isOverCurry(active.el);
+      const source = active.item;
+      const ghost = active.el;
+      active = null;
+
+      window.removeEventListener('pointermove', onPointerMove);
+      source.style.visibility = '';
+      ghost.remove();
+
+      if (success) solve();
+    }
+
+    items.forEach(item => {
+      item.addEventListener('pointerdown', ev => startDrag(ev, item));
+    });
+
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function solve() {
+      if (solved) return;
+      solved = true;
+      blackout.classList.add('show');
+      blackout.setAttribute('aria-hidden', 'false');
+
+      // まず元の画面をしっかりブラックアウトさせる。
+      await wait(1000);
+
+      // 「カレー」を表示。
+      morphText.innerHTML = '<span class="morph-stack" id="morphStack"><span class="morph-water">みず</span><span class="morph-curry">カレー</span><span class="morph-final">噛みづれー</span></span>';
+      morphText.classList.add('visible');
+      await wait(3600);
+
+      // 「みず」が「カレー」に入ってくることを見せる。
+      const stack = document.getElementById('morphStack');
+      stack.classList.add('merge');
+      await wait(4400);
+
+      // 挿入後の表記。
+      morphText.innerHTML = '<span class="morph-final" style="position:static;transform:none;opacity:1;transition:none;">かみずれー</span>';
+      await wait(3600);
+
+      // 音が変化して「噛みづれー」へ。
+      morphText.innerHTML = '<span class="morph-final" style="position:static;transform:scale(.94);opacity:0;transition:opacity 2.8s ease, transform 2.8s ease;">噛みづれー</span>';
+      const finalText = morphText.firstElementChild;
+      requestAnimationFrame(() => {
+        finalText.style.opacity = '1';
+        finalText.style.transform = 'scale(1)';
+      });
+
+      await wait(4800);
+      blackout.classList.remove('show');
+      await wait(500);
+      clearScreen.classList.add('show');
+      clearScreen.setAttribute('aria-hidden', 'false');
+    }
+  </script>
+</body>
+</html>
